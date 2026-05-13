@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: encrypted_ssh_keys
+        name: Encrypted SSH keys
+        language: system
+        entry: .pre-commit/check_ssh_keys_passphrase.sh
+        pass_filenames: false
