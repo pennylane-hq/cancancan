@@ -1,0 +1,5 @@
+# It is recommended to receive reviews from
+#
+# - @pennylane-hq/security as this gem handles the authentication/authorization of users
+
+* @pennylane-hq/security

@@ -104,3 +104,16 @@ jobs:
 
       - name: Run linter
         run: bundle exec rubocop
+
+  license_checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - name: Install gems
+        run: bundle install
+      - name: Check licenses
+        run: bundle exec license_finder
