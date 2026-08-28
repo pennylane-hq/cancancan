@@ -43,17 +43,43 @@ module CanCan
         table_metadata = ActiveRecord::TableMetadata.new(@model_class, table)
         predicate_builder = ActiveRecord::PredicateBuilder.new(table_metadata)
 
-        predicate_builder.build_from_hash(conditions.stringify_keys).map { |b| visit_nodes(b) }.join(' AND ')
+        nodes = predicate_builder.build_from_hash(conditions.stringify_keys)
+        nodes.one? ? nodes.first : Arel::Nodes::And.new(nodes)
       end
 
-      def visit_nodes(node)
-        # Rails 5.2 adds a BindParam node that prevents the visitor method from properly compiling the SQL query
-        if self.class.version_greater_or_equal?('5.2.0')
-          connection = @model_class.send(:connection)
-          collector = Arel::Collectors::SubstituteBinds.new(connection, Arel::Collectors::SQLString.new)
-          connection.visitor.accept(node, collector).value
+      def false_sql
+        Arel.sql('1=0')
+      end
+
+      def true_sql
+        Arel.sql('1=1')
+      end
+
+      def merge_non_empty_conditions(behavior, conditions_hash, sql)
+        conditions = sanitize_sql(conditions_hash)
+        conditions = Arel.sql(conditions) if conditions.is_a?(::String)
+        sql = Arel.sql(sql) if sql.is_a?(::String)
+        case sql
+        when true_sql
+          behavior ? true_sql : Arel::Nodes::Not.new(Arel::Nodes::Grouping.new(conditions))
+        when false_sql
+          behavior ? conditions : false_sql
         else
-          @model_class.send(:connection).visitor.compile(node)
+          grouped_conditions = Arel::Nodes::Grouping.new(conditions)
+          grouped_sql = Arel::Nodes::Grouping.new(sql)
+          if behavior
+            Arel::Nodes::Grouping.new(arel_or(grouped_conditions, grouped_sql))
+          else
+            Arel::Nodes::Grouping.new(Arel::Nodes::And.new([Arel::Nodes::Not.new(grouped_conditions), grouped_sql]))
+          end
+        end
+      end
+
+      def arel_or(left, right)
+        if self.class.version_greater_or_equal?('8.0.0')
+          Arel::Nodes::Or.new([left, right])
+        else
+          Arel::Nodes::Or.new(left, right)
         end
       end
     end

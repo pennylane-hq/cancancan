@@ -95,7 +95,7 @@ RSpec.describe CanCan::ModelAdapters::ActiveRecord5Adapter do
                                INNER JOIN \"houses_people\" ON \"houses_people\".\"house_id\" = \"houses\".\"id\"
                                INNER JOIN \"people\" ON \"people\".\"id\" = \"houses_people\".\"person_id\"
                                WHERE (\"houses\".\"id\" = \"houses_alias\".\"id\") AND
-                               (\"people\".\"id\" = #{@person1.id})
+                               \"people\".\"id\" = #{@person1.id}
                                LIMIT 1))
                              ")
         end
