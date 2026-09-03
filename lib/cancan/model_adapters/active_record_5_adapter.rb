@@ -58,7 +58,6 @@ module CanCan
       def merge_non_empty_conditions(behavior, conditions_hash, sql)
         conditions = sanitize_sql(conditions_hash)
         conditions = Arel.sql(conditions) if conditions.is_a?(::String)
-        sql = Arel.sql(sql) if sql.is_a?(::String)
         case sql
         when true_sql
           behavior ? true_sql : Arel::Nodes::Not.new(Arel::Nodes::Grouping.new(conditions))

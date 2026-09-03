@@ -362,8 +362,10 @@ RSpec.describe CanCan::ModelAdapters::ActiveRecordAdapter do
       it 'returns `not (sql)` for single `cannot` definition in front of default `can` condition' do
         @ability.can :read, Article
         @ability.cannot :read, Article, published: false, secret: true
-        sql = Article.accessible_by(@ability).to_sql
-        expect(sql).to include('NOT').and include('published').and include('secret')
+        expect(@ability.model_adapter(Article, :read)).to generate_sql(%(
+    SELECT "articles".*
+    FROM "articles"
+    WHERE NOT (("#{@article_table}"."published" = #{false_v} AND "#{@article_table}"."secret" = #{true_v}))))
       end
 
       it 'returns appropriate sql conditions in complex case' do
@@ -371,8 +373,11 @@ RSpec.describe CanCan::ModelAdapters::ActiveRecordAdapter do
         @ability.can :manage, Article, id: 1
         @ability.can :update, Article, published: true
         @ability.cannot :update, Article, secret: true
-        update_sql = Article.accessible_by(@ability, :update).to_sql
-        expect(update_sql).to include('NOT').and include('published').and include('secret')
+        expect(@ability.model_adapter(Article, :update)).to generate_sql(%(
+    SELECT "articles".*
+    FROM "articles"
+    WHERE (NOT (("#{@article_table}"."secret" = #{true_v})) AND
+      (("#{@article_table}"."published" = #{true_v}) OR ("#{@article_table}"."id" = 1)))))
         expect(@ability.model_adapter(Article, :manage).conditions).to eq(id: 1)
         expect(@ability.model_adapter(Article, :read).conditions).to eq({})
         expect(@ability.model_adapter(Article, :read)).to generate_sql(%(SELECT "articles".* FROM "articles"))
@@ -393,9 +398,11 @@ RSpec.describe CanCan::ModelAdapters::ActiveRecordAdapter do
         @ability.can :read, Article, published: true
         @ability.can :read, Article, ['secret = ?', false]
         adapter = @ability.model_adapter(Article, :read)
-        sqls = 2.times.map { Article.where(adapter.conditions).to_sql }
-        expect(sqls[0]).to include('secret').and include('published')
-        expect(sqls[0]).to eq(sqls[1])
+        2.times do
+          expect(Article.where(adapter.conditions).to_sql).to include(
+            %[WHERE ((secret = #{false_v}) OR ("#{@article_table}"."published" = #{true_v}))]
+          )
+        end
       end
 
       it 'has nil joins if no rules' do
